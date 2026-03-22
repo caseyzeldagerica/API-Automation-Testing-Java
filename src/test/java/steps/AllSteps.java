@@ -38,14 +38,18 @@ public class AllSteps {
 
     @Then("Saya melihat tulisan {string}")
     public void verify(String expected) {
-        if(expected.equals("alert")) {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-            wait.until(ExpectedConditions.alertIsPresent());
-            driver.switchTo().alert().accept();
-        } else {
-            Assert.assertEquals(expected, homePage.getWelcomeText());
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        try {
+            if(expected.equals("alert")) {
+                wait.until(ExpectedConditions.alertIsPresent());
+                driver.switchTo().alert().accept();
+            } else {
+                WebElement welcomeMsg = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("nameofuser")));
+                Assert.assertEquals(expected, welcomeMsg.getText());
+            }
+        } finally {
+            driver.quit(); // Wajib quit biar memory Linux nggak penuh
         }
-        driver.quit();
     }
 
     @And("Saya menambah barang {string} ke cart")
