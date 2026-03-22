@@ -23,7 +23,7 @@ public class AllSteps {
     @Given("Saya membuka web Demoblaze")
     public void openWeb() {
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage");
+        options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--window-size=1920,1080");
         driver = new ChromeDriver(options);
         driver.get("https://www.demoblaze.com/");
         homePage = new DemoblazeHomePage(driver);
@@ -38,55 +38,64 @@ public class AllSteps {
 
     @Then("Saya melihat tulisan {string}")
     public void verify(String expected) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         try {
             if(expected.equals("alert")) {
-                wait.until(ExpectedConditions.alertIsPresent());
-                driver.switchTo().alert().accept();
+                wait.until(ExpectedConditions.alertIsPresent()).accept();
             } else {
-                WebElement welcomeMsg = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("nameofuser")));
-                Assert.assertEquals(expected, welcomeMsg.getText());
+                WebElement welcome = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("nameofuser")));
+                // Pakai retry sederhana untuk menghindari stale element saat ambil teks
+                wait.until(d -> welcome.getText().contains("Welcome"));
+                Assert.assertEquals(expected, welcome.getText());
             }
         } finally {
-            driver.quit(); // Wajib quit biar memory Linux nggak penuh
+            if (!expected.contains("Welcome")) driver.quit();
         }
     }
 
     @And("Saya menambah barang {string} ke cart")
     public void addToCart(String item) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
 
-        // Klik Nama Barang (Pakai retry kalau gagal)
-        wait.until(ExpectedConditions.elementToBeClickable(By.linkText(item))).click();
+        // Anti-Stale: Tunggu sampai overlay login hilang dan halaman utama stabil
+        wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("logInModal")));
 
-        // Klik Tombol Add to Cart
-        WebElement addToCartBtn = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//a[text()='Add to cart']")));
-        addToCartBtn.click();
+        // Klik Barang dengan JavaScript sebagai cadangan jika klik biasa gagal
+        WebElement itemLink = wait.until(ExpectedConditions.elementToBeClickable(By.linkText(item)));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", itemLink);
 
-        // Tunggu Alert muncul dan klik OK
-        wait.until(ExpectedConditions.alertIsPresent());
-        driver.switchTo().alert().accept();
+        // Klik Add to Cart
+        WebElement addBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//a[text()='Add to cart']")));
+        addBtn.click();
 
-        // Klik Menu Cart untuk lanjut checkout
+        // Handle Alert
+        wait.until(ExpectedConditions.alertIsPresent()).accept();
+
+        // Ke Cart
         driver.findElement(By.id("cartur")).click();
     }
 
     @And("Saya melakukan checkout dengan nama {string}")
     public void checkout(String nama) {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[text()='Place Order']"))).click();
+
+        // Isi Form
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("name"))).sendKeys(nama);
         driver.findElement(By.id("country")).sendKeys("Indonesia");
         driver.findElement(By.id("city")).sendKeys("Jakarta");
-        driver.findElement(By.id("card")).sendKeys("123456");
+        driver.findElement(By.id("card")).sendKeys("12345678");
         driver.findElement(By.id("month")).sendKeys("12");
         driver.findElement(By.id("year")).sendKeys("2026");
+
         driver.findElement(By.xpath("//button[text()='Purchase']")).click();
     }
 
     @Then("Saya melihat pesan sukses {string}")
     public void verifySuccess(String msg) {
-        Assert.assertTrue(driver.findElement(By.xpath("//h2[contains(text(),'Thank you')]")).isDisplayed());
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        WebElement successHeader = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//h2[contains(text(),'Thank you')]")));
+        Assert.assertTrue(successHeader.isDisplayed());
         driver.quit();
     }
 

@@ -1,14 +1,14 @@
 Feature: Final Project QA Automation
 
   @api
-  Scenario Outline: API Test - Get Users and Validations
+  Scenario Outline: API Test - Get Data Validation
     Given Saya setup API Dummy
     When Saya request GET "<endpoint>"
     Then Statusnya <status> dan datanya ada
     Examples:
       | endpoint      | status |
       | user          | 200    |
-      | user?limit=10 | 200    |
+      | user?limit=5  | 200    |
       | tag           | 200    |
       | post          | 200    |
 
@@ -27,9 +27,11 @@ Feature: Final Project QA Automation
       | user   | pass   | pesan         |
       | admin  | admin  | Welcome admin |
       | admin  | salah  | alert         |
+      | user12 | pass12 | alert         |
+      | testing| testing| alert         |
 
   @web
-  Scenario: Web Test - Checkout E2E
+  Scenario: Web Test - End to End Checkout
     Given Saya membuka web Demoblaze
     When Saya login dengan user "admin" dan pass "admin"
     And Saya menambah barang "Samsung galaxy s6" ke cart
